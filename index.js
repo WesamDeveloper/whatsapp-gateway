@@ -61,7 +61,7 @@ async function startSession(tenantId) {
 // -----------------------------------------------------
 
 // Initialize session and get QR
-app.post('/api/whatsapp/init', async (req, res) => {
+app.post('/wa/api/whatsapp/init', async (req, res) => {
     const { tenant_id } = req.body;
     if (!tenant_id) return res.status(400).json({ error: 'tenant_id is required' });
 
@@ -84,7 +84,7 @@ app.post('/api/whatsapp/init', async (req, res) => {
 });
 
 // Check connection status
-app.get('/api/whatsapp/status/:tenant_id', (req, res) => {
+app.get('/wa/api/whatsapp/status/:tenant_id', (req, res) => {
     const tenantId = req.params.tenant_id;
     const sock = sessions[tenantId];
     
@@ -100,7 +100,7 @@ app.get('/api/whatsapp/status/:tenant_id', (req, res) => {
 });
 
 // Send Message securely using the correct tenant's session
-app.post('/api/send-message', async (req, res) => {
+app.post('/wa/api/send-message', async (req, res) => {
     try {
         const { tenant_id, phone, message } = req.body;
         
