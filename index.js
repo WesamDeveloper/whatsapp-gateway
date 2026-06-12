@@ -153,8 +153,8 @@ app.post('/wa/api/send-message', async (req, res) => {
     }
 });
 
-// Start all previously saved active sessions on server boot
-function boot() {
+// Start all previously saved active sessions on server boot sequentially
+async function boot() {
     if (!fs.existsSync('./sessions')) fs.mkdirSync('./sessions');
     
     const folders = fs.readdirSync('./sessions', { withFileTypes: true });
@@ -163,6 +163,8 @@ function boot() {
             const tenantId = folder.name.split('_')[1];
             console.log(`[Boot] Restoring session for Tenant ${tenantId}...`);
             startSession(tenantId);
+            // Wait 5 seconds between each session initialization to prevent RAM spikes
+            await new Promise(resolve => setTimeout(resolve, 5000));
         }
     }
 }
