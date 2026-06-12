@@ -37,12 +37,14 @@ async function startSession(tenantId) {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(`[Tenant ${tenantId}] Connection closed. Reconnecting:`, shouldReconnect);
             if (shouldReconnect) {
-                startSession(tenantId);
+                setTimeout(() => startSession(tenantId), 5000);
             } else {
                 delete sessions[tenantId];
                 delete qrCodes[tenantId];
                 // User explicitly logged out from their phone. Delete session data.
-                fs.rmSync(sessionDir, { recursive: true, force: true });
+                if (fs.existsSync(sessionDir)) {
+                    fs.rmSync(sessionDir, { recursive: true, force: true });
+                }
             }
         } else if (connection === 'open') {
             console.log(`[Tenant ${tenantId}] WhatsApp connection opened successfully!`);
@@ -97,6 +99,33 @@ app.get('/wa/api/whatsapp/status/:tenant_id', (req, res) => {
     }
     
     res.json({ connected: false, status: 'not_initialized' });
+});
+
+// Reset session explicitly
+app.post('/wa/api/whatsapp/reset', (req, res) => {
+    const { tenant_id } = req.body;
+    if (!tenant_id) return res.status(400).json({ error: 'tenant_id is required' });
+
+    const sessionDir = `./sessions/tenant_${tenant_id}`;
+    
+    if (sessions[tenant_id]) {
+        try {
+            sessions[tenant_id].ev.removeAllListeners();
+            sessions[tenant_id].ws.close();
+        } catch (e) {}
+        delete sessions[tenant_id];
+    }
+    delete qrCodes[tenant_id];
+
+    if (fs.existsSync(sessionDir)) {
+        try {
+            fs.rmSync(sessionDir, { recursive: true, force: true });
+        } catch (e) {
+            console.error('Failed to delete session dir', e);
+        }
+    }
+    
+    res.json({ success: true, message: 'Session reset successfully' });
 });
 
 // Send Message securely using the correct tenant's session
