@@ -143,6 +143,13 @@ app.post(['/wa/api/send-message', '/api/send-message'], async (req, res) => {
 
         // Format phone number to standard WhatsApp JID
         const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+        
+        // Verify if the number is registered on WhatsApp
+        const [result] = await sock.onWhatsApp(jid);
+        if (!result || !result.exists) {
+            return res.status(400).json({ error: 'This phone number is not registered on WhatsApp.' });
+        }
+
         await sock.sendMessage(jid, { text: message });
         
         res.json({ success: true, message: 'Message sent successfully via tenant session' });
