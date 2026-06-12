@@ -138,7 +138,7 @@ app.post('/wa/api/send-message', async (req, res) => {
         }
         
         const sock = sessions[tenant_id];
-        if (!sock || !sock.user) {
+        if (!sock) {
             return res.status(400).json({ error: 'WhatsApp is not connected for this store. Please scan QR first.' });
         }
 
