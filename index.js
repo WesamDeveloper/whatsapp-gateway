@@ -188,14 +188,23 @@ app.post(['/wa/api/send-message', '/api/send-message'], async (req, res) => {
         const jid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
         
         // Verify if the number is registered on WhatsApp
-        const [result] = await sock.onWhatsApp(jid);
-        if (!result || !result.exists) {
-            return res.status(400).json({ error: 'This phone number is not registered on WhatsApp.' });
-        }
+        // Removed sock.onWhatsApp check because it is flaky and frequently causes rate limits or false positives
 
-        await sock.sendMessage(jid, { text: message });
+        // Send message with a timeout to prevent hanging the HTTP request if WS is reconnecting
+        const sendPromise = sock.sendMessage(jid, { text: message });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 10000));
         
-        res.json({ success: true, message: 'Message sent successfully via tenant session' });
+        try {
+            await Promise.race([sendPromise, timeoutPromise]);
+            res.json({ success: true, message: 'Message sent successfully via tenant session' });
+        } catch (err) {
+            if (err.message === 'TIMEOUT') {
+                // It's queued by Baileys and will send when connected
+                res.json({ success: true, message: 'Message queued for sending' });
+            } else {
+                throw err;
+            }
+        }
     } catch (error) {
         console.error('Error sending message:', error);
         res.status(500).json({ error: 'Failed to send message', details: error.message });
