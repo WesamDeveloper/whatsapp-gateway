@@ -85,6 +85,29 @@ app.post(['/wa/api/whatsapp/init', '/api/whatsapp/init'], async (req, res) => {
     res.json({ status: 'initializing' });
 });
 
+// Request Pairing Code
+app.post(['/wa/api/whatsapp/pair', '/api/whatsapp/pair'], async (req, res) => {
+    const { tenant_id, phone } = req.body;
+    if (!tenant_id || !phone) return res.status(400).json({ error: 'tenant_id and phone are required' });
+
+    let sock = sessions[tenant_id];
+    if (!sock) {
+        sock = await startSession(tenant_id);
+        await new Promise(resolve => setTimeout(resolve, 2500));
+    }
+
+    if (sock?.user) {
+        return res.json({ status: 'connected', user: sock.user });
+    }
+
+    try {
+        const code = await sock.requestPairingCode(phone);
+        res.json({ status: 'pairing_code', code: code });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to request pairing code', details: err.message });
+    }
+});
+
 // Check connection status
 app.get(['/wa/api/whatsapp/status/:tenant_id', '/api/whatsapp/status/:tenant_id'], (req, res) => {
     const tenantId = req.params.tenant_id;
