@@ -101,6 +101,26 @@ app.post(['/wa/api/whatsapp/pair', '/api/whatsapp/pair'], async (req, res) => {
     }
 
     try {
+        // Wait for socket to be ready (when it emits QR)
+        if (!qrCodes[tenant_id]) {
+            await new Promise((resolve) => {
+                const listener = (update) => {
+                    if (update.qr || update.isOnline) {
+                        sock.ev.off('connection.update', listener);
+                        resolve();
+                    }
+                };
+                sock.ev.on('connection.update', listener);
+                setTimeout(() => {
+                    sock.ev.off('connection.update', listener);
+                    resolve();
+                }, 8000); // 8 seconds timeout
+            });
+        }
+
+        // Add a small delay after socket is ready to avoid "Socket not connected" error
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
         const code = await sock.requestPairingCode(phone);
         res.json({ status: 'pairing_code', code: code });
     } catch (err) {
