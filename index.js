@@ -192,12 +192,17 @@ app.post(['/wa/api/send-message', '/api/send-message'], async (req, res) => {
 
         // Send message with a timeout to prevent hanging the HTTP request if WS is reconnecting
         const sendPromise = sock.sendMessage(jid, { text: message });
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 10000));
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), 10000);
+        });
         
         try {
             await Promise.race([sendPromise, timeoutPromise]);
+            clearTimeout(timeoutId);
             res.json({ success: true, message: 'Message sent successfully via tenant session' });
         } catch (err) {
+            clearTimeout(timeoutId);
             if (err.message === 'TIMEOUT') {
                 // It's queued by Baileys and will send when connected
                 res.json({ success: true, message: 'Message queued for sending' });
